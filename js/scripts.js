@@ -1,73 +1,107 @@
-const dropList = document.querySelectorAll('.drop-list select'),
-fromCurrency = document.querySelector('.from select'),
-toCurrency = document.querySelector('.to select'),
-getButton = document.querySelector('form button');
+const normalRate = document.querySelector('.btn.normal'); // Fix the selector
+const pppRate = document.querySelector('.btn.ppp'); // Fix the selector
+const dropList = document.querySelectorAll('.drop-list select');
+const fromCurrency = document.querySelector('.from select');
+const toCurrency = document.querySelector('.to select');
+const getButton = document.querySelector('form button');
+const exchangeRateTxt = document.querySelector('.exchange-rate');
+const amount = document.querySelector('.amount input');
 
-for(let i = 0; i < dropList.length; i++) {
-  for(currency_code in country_code){
-    // selecting USD by default as FROM currency and NPR as TO currency
-    let selected;
-    if(i == 0) {
-      selected = currency_code == 'USD' ? 'Selected' : '';
-    }else if(i == 1){
-      selected = currency_code == 'NGN' ? 'Selected' : '';
-    }
-    // creating option tag with passing currency code as a text and value
+let amountVal = 1; // Default value
+
+// Set up the dropdowns with currencies
+for (let i = 0; i < dropList.length; i++) {
+  for (currency_code in country_code) {
+    let selected = (i === 0 && currency_code === 'USD') || (i === 1 && currency_code === 'NGN') ? 'selected' : '';
     let optionTag = `<option value="${currency_code}" ${selected}>${currency_code}</option>`;
-    // inserting options tag inside select tag
     dropList[i].insertAdjacentHTML('beforeend', optionTag);
   }
-  dropList[i].addEventListener('change', e => {
-    loadFlag(e.target); // calling loadFloag with passing target element as an argument
-  });
+  dropList[i].addEventListener('change', e => loadFlag(e.target));
 }
 
 function loadFlag(element) {
-  for(code in country_code){
-    if(code == element.value){ // if currency code of country list is equal to option value
-      let imgTag = element.parentElement.querySelector('img'); // selecting img tag of particular drop list
-      // passing country code of a selected currency code in a img url
+  for (code in country_code) {
+    if (code === element.value) {
+      let imgTag = element.parentElement.querySelector('img');
       imgTag.src = `https://flagsapi.com/${country_code[code]}/flat/64.png`;
     }
   }
 }
 
-window.addEventListener('load', () => {
-  getExchangeRate();
-});
+function setUp() {
+  amountVal = amount.value || 1;
+  exchangeRateTxt.innerText = 'Getting rate...';
+}
 
-getButton.addEventListener('click', e => {
-  e.preventDefault(); //preventing form from submitting
-  getExchangeRate();
-});
+function useExchangeRate() {
+  setUp();
 
+  let url = `https://v6.exchangerate-api.com/v6/c0e47268524d473b2a3e7a76/latest/${fromCurrency.value}`;
+  fetch(url)
+    .then(response => response.json())
+    .then(result => {
+      let exchangeRate = result.conversion_rates[toCurrency.value];
+      let totalExchangeRate = (amountVal * exchangeRate).toFixed(2);
+      exchangeRateTxt.innerText = `${amountVal} ${fromCurrency.value} = ${totalExchangeRate} ${toCurrency.value}`;
+    })
+    .catch(() => {
+      exchangeRateTxt.innerText = 'Something went wrong';
+    });
+}
+
+async function usePPPRate() {
+  setUp(); // Set up initial state
+
+  const baseUrl = "https://api.worldbank.org/v2/country";
+  const indicator = "PA.NUS.PPP";
+  const year = 2023 // new Date().getFullYear(); - This is the correct code as it gives the current year.
+  const format = "json";
+  const fromCountry = countryCode[fromCurrency.value];
+  const toCountry = countryCode[toCurrency.value];
+
+  try {
+    // Fetch PPP data for 'fromCurrency'
+    const fromResponse = await fetch(
+      `${baseUrl}/${fromCountry}/indicator/${indicator}?date=${year}&format=${format}`
+    );
+    const fromData = await fromResponse.json();
+    if (!fromData[1]) throw new Error(`No PPP data found for ${fromCurrency.value}`);
+    const fromPPP = fromData[1][0].value;
+
+    // Fetch PPP data for 'toCurrency'
+    const toResponse = await fetch(
+      `${baseUrl}/${toCountry}/indicator/${indicator}?date=${year}&format=${format}`
+    );
+    const toData = await toResponse.json();
+    if (!toData[1]) throw new Error(`No PPP data found for ${toCurrency.value}`);
+    const toPPP = toData[1][0].value;
+
+    // Convert the price
+    let pppRate = ((amountVal / fromPPP) * toPPP).toFixed(2);
+
+    exchangeRateTxt.innerText = `${amountVal} ${fromCurrency.value} = ${pppRate} ${toCurrency.value}`;
+  } catch (error) {
+    exchangeRateTxt.innerText = error.message || "Something went wrong";
+  }
+}
+
+
+
+// Event listeners for buttons
+normalRate.addEventListener('click', useExchangeRate);
+pppRate.addEventListener('click', usePPPRate);
+
+// Exchange icon click
 const exchangeIcon = document.querySelector('.drop-list .icon');
 exchangeIcon.addEventListener('click', () => {
-  let tempCode = fromCurrency.value; // temporary currencyy code of FROM drop list
-  fromCurrency.value = toCurrency.value; // passing TO currency code to FROM currency code
-  toCurrency.value = tempCode; // passing temporary currency code to TO currency code
-  loadFlag(fromCurrency); // calling loadFlag with passing FROM currency element as an argument
-  loadFlag(toCurrency); // calling loadFlag with passing TO currency element as an argument
-  getExchangeRate(); // calling getExchangeRate function to get new exchange rate with updated currency codes
-})
+  [fromCurrency.value, toCurrency.value] = [toCurrency.value, fromCurrency.value];
+  loadFlag(fromCurrency);
+  loadFlag(toCurrency);
+});
 
-function getExchangeRate() {
-  const amount = document.querySelector('.amount input'),
-  exchangeRateTxt = document.querySelector('.exchange-rate');
-  let amountVal = amount.value;
-  // this make 1 the default value in the input field if user don't enter any value or enters 0
-  if(amountVal == '' || amountVal == 0) {
-    amount.value = '1';
-    amountVal = 1;
-  }
-  exchangeRateTxt.innerText = 'Getting Exchange rate...';
-  let url = `https://v6.exchangerate-api.com/v6/c0e47268524d473b2a3e7a76/latest/${fromCurrency.value}`;
-  // fetching api response and returning it with parsing into js obj and in another then method receiving that obj
-  fetch(url).then(response => (response.json())).then(result => {
-    let exchangeRate = result.conversion_rates[toCurrency.value];
-    let totalExchangeRate = (amountVal * exchangeRate).toFixed(2);
-    exchangeRateTxt.innerText = `${amountVal} ${fromCurrency.value} = ${totalExchangeRate} ${toCurrency.value}`;
-  }).catch(() => { // if user is offline or any other error occured while fetching data then catch function will run
-    exchangeRateTxt.innerText = 'Something went wrong';
-  });
-}
+
+// Get Exchange Rate on load
+
+window.onload = () => {
+  useExchangeRate();
+};

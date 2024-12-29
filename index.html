@@ -3,6 +3,7 @@
 
   <head>
     <meta charset="utf-8">
+    <link rel="shortcut icon" href="currencyImg.png">
     <title>Currency Converter App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
@@ -11,7 +12,7 @@
 
   <body>
     <div class="wrapper">
-      <header>Currency Converter</header>
+      <h2>Currency Converter</h2>
       <form action="#">
         <div class="amount">
           <p>Enter Amount</p>
@@ -34,11 +35,15 @@
             </div>
           </div>
         </div>
-        <div class="exchange-rate">Getting exchange rate...</div>
-        <button>Get Exchange Rate</button>
+        <div class="exchange-rate">Getting rate...</div>
       </form>
+      <div class="btn-wrapper">
+        <button class="btn normal">Get Exchange Rate</button>
+        <button class="btn ppp">Get PPP Rate</button>
+      </div>
     </div>
     
+    <script src="js/country-currency-code.js"></script>
     <script src="js/country-list.js"></script>
     <script src="js/scripts.js"></script>
 
